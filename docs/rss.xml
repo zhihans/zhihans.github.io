@@ -1,2 +1,94 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Blog Title</title><link>https://zhihans.github.io</link><description>Blog description</description><copyright>Blog Title</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://github.githubassets.com/favicons/favicon.svg</url><title>avatar</title><link>https://zhihans.github.io</link></image><lastBuildDate>Sat, 10 May 2025 03:05:57 +0000</lastBuildDate><managingEditor>Blog Title</managingEditor><ttl>60</ttl><webMaster>Blog Title</webMaster></channel></rss>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>Blog Title</title><link>https://zhihans.github.io</link><description>Blog description</description><copyright>Blog Title</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://github.githubassets.com/favicons/favicon.svg</url><title>avatar</title><link>https://zhihans.github.io</link></image><lastBuildDate>Sat, 10 May 2025 21:58:36 +0000</lastBuildDate><managingEditor>Blog Title</managingEditor><ttl>60</ttl><webMaster>Blog Title</webMaster><item><title>typecho fprc acme.sh</title><link>https://zhihans.github.io/post/typecho%20fprc%20acme.sh.html</link><description>修改了一下先前的版本，现在使用两个fprc并且支持https，同时启用了typecho自动安装
+
+
+![Image](https://github.com/user-attachments/assets/f3a85c5e-aa8c-4551-b7ad-044d5b53a4e5)
+
+compose文件
+```yaml
+x-frpc-common: &amp;frpc-common
+  image: snowdreamtech/frpc:latest
+  restart: unless-stopped
+  volumes:
+    - ./frpc:/etc/frpc
+  environment:
+    - TZ=Asia/Shanghai
+
+services:
+  acme.sh:
+    image: neilpang/acme.sh
+    container_name: acme.sh
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - well_known_tmp:/webroot/.well-known
+      - ./acme.sh:/acme.sh
+      - ./frpc:/frpc
+    command: daemon
+  typecho:
+    image: joyqi/typecho:nightly-php8.2-alpine
+    container_name: typecho
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - well_known_tmp:/app/.well-known
+      - ./typecho:/app/usr
+    environment:
+      TYPECHO_INSTALL: 1
+      TYPECHO_SITE_URL: https://han.tipai.icu
+      TYPECHO_DB_ADAPTER: Pdo_SQLite
+      TYPECHO_DB_FILE: data.db
+      TYPECHO_DB_NEXT: keep
+  frpc:
+    &lt;&lt;: *frpc-common
+    container_name: typecho_mefrp
+    command: ['-c', '/etc/frpc/mefrp.toml']
+  frpc2:
+    &lt;&lt;: *frpc-common
+    container_name: typecho_openfrp
+    command: ['-c', '/etc/frpc/openfrp.toml']
+
+volumes:
+  well_known_tmp:
+```
+
+
+acme.sh 申请证书并安装
+```bash
+docker exec -it acme.sh ash
+acme.sh --register-account -m email@email.com
+acme.sh --issue -d han.tipai.icu --webroot /webroot/
+acme.sh --install-cert -d han.tipai.icu \
+--key-file       /frpc/server.key  \
+--fullchain-file /frpc/server.crt
+```
+
+
+fprc配置文件
+```toml
+serverAddr = 'frps.example.com'
+serverPort = 2333
+user = 'user'
+
+[auth]
+method = 'token'
+token = 'FrpServerToken'
+
+[[proxies]]
+name = 'typecho'
+type = 'http'
+localIP = 'typecho'
+localPort = 80
+customDomains = ['han.tipai.icu']
+
+[[proxies]]
+name = 'typecho_https'
+type = 'https'
+customDomains = ['han.tipai.icu']
+
+[proxies.plugin]
+type = 'https2http'
+localAddr = 'typecho:80'
+crtPath = '/etc/frpc/server.crt'
+keyPath = '/etc/frpc/server.key'
+```。</description><guid isPermaLink="true">https://zhihans.github.io/post/typecho%20fprc%20acme.sh.html</guid><pubDate>Sat, 10 May 2025 21:56:56 +0000</pubDate></item></channel></rss>
